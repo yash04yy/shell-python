@@ -1,4 +1,5 @@
 import sys
+import os
 
 def main():
     while(True):
@@ -14,7 +15,17 @@ def main():
             if target in builtins:
                 print(f"{target} is a shell builtin")
             else:
-                print(f"{target}: not found")
+                path_env = os.getenv("PATH")
+                path_dirs = path_env.split(':')
+                found = False
+                for path_dir in path_dirs:
+                    file_path = path_dir + '/' + target
+                    if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                        print(f"{target} is {file_path}")
+                        found = True
+                        break
+                if not found:
+                    print(f"{target}: not found")
         else:
             print(f"{command}: command not found")
 
