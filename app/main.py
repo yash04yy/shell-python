@@ -12,9 +12,9 @@ def main():
             target = command[5:]
             builtins = {"echo","exit","type"}
             if target in builtins:
-                print(f"{command[5:]} is a shell builtin")
+                print(f"{target} is a shell builtin")
             else:
-                print(f"type {command}: command not found")
+                print(f"{target}: command not found")
         else:
             print(f"{command}: command not found")
 
