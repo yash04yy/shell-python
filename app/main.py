@@ -1,5 +1,7 @@
+import sys
+
 def main():
-    print("$ ")
+    sys.stdout.write("$ ")
 
 
 if __name__ == "__main__":
