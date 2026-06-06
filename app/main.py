@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 
 def main():
     while(True):
@@ -27,7 +28,19 @@ def main():
                 if not found:
                     print(f"{target}: not found")
         else:
-            print(f"{command}: command not found")
+            target = command.split(" ")[0]
+            path_env = os.getenv("PATH")
+            path_dirs = path_env.split(':')
+            found = False
+            for path_dir in path_dirs:
+                file_path = path_dir + '/' + target
+                if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                    args = [file_path] + [command.split(" ")[1]]
+                    subprocess.run(args)
+                    found = True
+                    break
+            if not found:
+                print(f"{command}: command not found")
 
 
 if __name__ == "__main__":
