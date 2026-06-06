@@ -28,15 +28,17 @@ def main():
                 if not found:
                     print(f"{target}: not found")
         else:
-            target = command.split(" ")[0]
+            # Coverts $ python3 --version
+            #to ['python3', '--version']
+            args = command.split()
+            target = args[0]
             path_env = os.getenv("PATH")
             path_dirs = path_env.split(':')
             found = False
             for path_dir in path_dirs:
                 file_path = path_dir + '/' + target
                 if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
-                    args = [file_path] + [command.split(" ")[1]]
-                    subprocess.run(args)
+                    subprocess.run(args,executable=file_path)
                     found = True
                     break
             if not found:
