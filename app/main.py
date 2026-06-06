@@ -6,6 +6,9 @@ def main():
         command = input()
         if command == "exit":
             break
+        if command.startswith("echo"):
+            print(command.strip("echo"))
+            break
         print(f"{command}: command not found")
 
 
