@@ -71,11 +71,11 @@ def main():
                         break
                 if not found:
                     output_msg = f"{target}: not found"
-                if redirect_file:
-                    with open(redirect_file, "w") as f:
-                        f.write(output_msg + "\n")
-                else:
-                    print(output_msg)
+            if redirect_file:
+                with open(redirect_file, "w") as f:
+                    f.write(output_msg + "\n")
+            else:
+                print(output_msg)
         elif cmd_name == "pwd":
             cur_dir = os.getcwd()
             if redirect_file:
@@ -83,7 +83,7 @@ def main():
                     f.write(cur_dir + "\n")
             else:
                 print(cur_dir)
-        elif cmd_name == "cd ":
+        elif cmd_name == "cd":
             try:
                 to_dir = args[1] if len(args) > 1 else "~"
                 if to_dir.startswith("~"):
@@ -111,7 +111,7 @@ def main():
                     found = True
                     break
             if not found:
-                print(f"{command}: command not found")
+                print(f"{target}: command not found")
 
 
 if __name__ == "__main__":
