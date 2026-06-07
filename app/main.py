@@ -14,7 +14,7 @@ def main():
             # echo 'shell hello'
             #becomes:
             #['echo', 'shell hello']
-            print("".join(args[1:]))
+            print(" ".join(args[1:]))
         elif command.startswith("type "):
             args = shlex.split(command)
             target = args[1]
