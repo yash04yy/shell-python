@@ -30,6 +30,9 @@ def main():
         elif command == "pwd":
             cur_dir = os.getcwd()
             print(cur_dir)
+        elif command.startswith("cd "):
+            to_dir = command[3:]
+            os.chdir(to_dir)
         else:
             # Coverts $ python3 --version
             #to ['python3', '--version']
