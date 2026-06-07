@@ -23,15 +23,40 @@ def main():
         redirect_stdout = None
         redirect_stderr = None
 
-        #Look for Standard Error Redirection (2>)
-        if "2>" in args:
-            idx = args.index("2>")
+        if "2>>" in args:
+            idx = args.index("2>>")
             if idx + 1 < len(args):
-                redirect_stderr = args[idx+1]
+                redirect_stderr = (args[idx+1],"a")
                 args = args[:idx]
             else:
                 print("shell: syntax error near unexpected token `newline'")
                 continue
+
+        #Look for Standard Error Redirection (2>)
+        if "2>" in args:
+            idx = args.index("2>")
+            if idx + 1 < len(args):
+                redirect_stderr = (args[idx+1],"w")
+                args = args[:idx]
+            else:
+                print("shell: syntax error near unexpected token `newline'")
+                continue
+        
+        if ">>" in args or "1>>" in args:
+            # Find the index of the operator
+            if ">>" in args:
+                idx = args.index(">>")
+            else:
+                idx = args.index("1>>")
+
+            # The file path is the argument immediately following the operator
+            if idx + 1 < len(args):
+                redirect_stdout = (args[idx+1],"a")
+                args = args[:idx]
+            else:
+                print("shell: syntax error near unexpected token `newline'")
+                continue
+
 
         # Look for '>' or '1>' in the arguments
         if ">" in args or "1>" in args:
@@ -43,7 +68,7 @@ def main():
 
             # The file path is the argument immediately following the operator
             if idx + 1 < len(args):
-                redirect_stdout = args[idx+1]
+                redirect_stdout = (args[idx+1],"w")
                 args = args[:idx]
             else:
                 print("shell: syntax error near unexpected token `newline'")
@@ -58,10 +83,12 @@ def main():
         elif cmd_name == "echo":
             output_str = " ".join(args[1:])
             if redirect_stderr:
-                with open(redirect_stderr, "w") as f:
+                path,mode = redirect_stderr
+                with open(path, mode) as f:
                     pass
             if redirect_stdout:
-                with open(redirect_stdout, "w") as f:
+                path,mode = redirect_stdout
+                with open(path, mode) as f:
                     f.write(output_str + "\n")
             else:
                 print(output_str)
@@ -86,20 +113,24 @@ def main():
                 if not found:
                     output_msg = f"{target}: not found"
             if redirect_stderr:
-                with open(redirect_stderr, "w") as f:
+                path,mode = redirect_stderr
+                with open(path, mode) as f:
                     pass
             if redirect_stdout:
-                with open(redirect_stdout, "w") as f:
+                path,mode = redirect_stdout
+                with open(path, mode) as f:
                     f.write(output_msg + "\n")
             else:
                 print(output_msg)
         elif cmd_name == "pwd":
             cur_dir = os.getcwd()
             if redirect_stderr:
-                with open(redirect_stderr, "w") as f:
+                path,mode = redirect_stderr
+                with open(path, mode) as f:
                     pass
             if redirect_stdout:
-                with open(redirect_stdout, "w") as f:
+                path,mode = redirect_stdout
+                with open(path, mode) as f:
                     f.write(cur_dir + "\n")
             else:
                 print(cur_dir)
@@ -111,12 +142,14 @@ def main():
                     to_dir = to_dir.replace("~",home)
                 os.chdir(to_dir)
                 if redirect_stderr:
-                    with open(redirect_stderr, "w") as f:
+                    path,mode = redirect_stderr
+                    with open(path, mode) as f:
                         pass
             except FileNotFoundError:
                 err_msg = f"cd: {to_dir}: No such file or directory"
                 if redirect_stderr:
-                    with open(redirect_stderr,"w") as f:
+                    path,mode = redirect_stderr
+                    with open(path, mode) as f:
                         f.write(err_msg + "\n")
                 else: 
                     print(err_msg)
@@ -132,13 +165,17 @@ def main():
                 file_path = path_dir + '/' + target
                 if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                     if redirect_stdout and redirect_stderr:
-                        with open(redirect_stdout, "w") as f_out, open(redirect_stderr, "w") as f_err:
+                        out_path, out_mode = redirect_stdout
+                        err_path, err_mode = redirect_stderr
+                        with open(out_path, out_mode) as f_out, open(err_path, err_mode) as f_err:
                             subprocess.run(args, executable=file_path, stdout=f_out, stderr=f_err)
                     elif redirect_stdout:
-                        with open(redirect_stdout, "w") as f_out:
+                        out_path, out_mode = redirect_stdout
+                        with open(out_path, out_mode) as f_out:
                             subprocess.run(args, executable=file_path, stdout=f_out)
                     elif redirect_stderr:
-                        with open(redirect_stderr, "w") as f_err:
+                        err_path, err_mode = redirect_stderr
+                        with open(err_path, err_mode) as f_err:
                             subprocess.run(args, executable=file_path, stderr=f_err)
                     else:
                         subprocess.run(args, executable=file_path)
