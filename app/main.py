@@ -27,6 +27,9 @@ def main():
                         break
                 if not found:
                     print(f"{target}: not found")
+        elif command == "pwd":
+            cur_dir = os.getcwd()
+            print(cur_dir)
         else:
             # Coverts $ python3 --version
             #to ['python3', '--version']
