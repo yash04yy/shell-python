@@ -33,6 +33,9 @@ def main():
         elif command.startswith("cd "):
             try:
                 to_dir = command[3:]
+                if to_dir.startswith("~"):
+                    home = os.getenv("HOME")
+                    to_dir = to_dir.replace("~",home)
                 os.chdir(to_dir)
             except FileNotFoundError:
                 print(f"cd: {to_dir}: No such file or directory")
