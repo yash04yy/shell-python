@@ -12,7 +12,7 @@ def main():
             print(command[5:])
         elif command.startswith("type "):
             target = command[5:]
-            builtins = {"echo","exit","type"}
+            builtins = {"echo","exit","type","pwd"}
             if target in builtins:
                 print(f"{target} is a shell builtin")
             else:
