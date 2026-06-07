@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import shlex
 
 def main():
     while(True):
@@ -9,9 +10,14 @@ def main():
         if command == "exit":
             break
         elif command.startswith("echo "):
-            print(command[5:])
+            args = shlex.split(command)
+            # echo 'shell hello'
+            #becomes:
+            #['echo', 'shell hello']
+            print("".join(args[1:]))
         elif command.startswith("type "):
-            target = command[5:]
+            args = shlex.split(command)
+            target = args[1]
             builtins = {"echo","exit","type","pwd"}
             if target in builtins:
                 print(f"{target} is a shell builtin")
@@ -43,7 +49,7 @@ def main():
         else:
             # Coverts $ python3 --version
             #to ['python3', '--version']
-            args = command.split()
+            args = shlex.split(command)
             target = args[0]
             path_env = os.getenv("PATH")
             path_dirs = path_env.split(':')
