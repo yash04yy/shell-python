@@ -57,6 +57,9 @@ def main():
             break
         elif cmd_name == "echo":
             output_str = " ".join(args[1:])
+            if redirect_stderr:
+                with open(redirect_stderr, "w") as f:
+                    pass
             if redirect_stdout:
                 with open(redirect_stdout, "w") as f:
                     f.write(output_str + "\n")
@@ -82,6 +85,9 @@ def main():
                         break
                 if not found:
                     output_msg = f"{target}: not found"
+            if redirect_stderr:
+                with open(redirect_stderr, "w") as f:
+                    pass
             if redirect_stdout:
                 with open(redirect_stdout, "w") as f:
                     f.write(output_msg + "\n")
@@ -89,6 +95,9 @@ def main():
                 print(output_msg)
         elif cmd_name == "pwd":
             cur_dir = os.getcwd()
+            if redirect_stderr:
+                with open(redirect_stderr, "w") as f:
+                    pass
             if redirect_stdout:
                 with open(redirect_stdout, "w") as f:
                     f.write(cur_dir + "\n")
@@ -101,6 +110,9 @@ def main():
                     home = os.getenv("HOME")
                     to_dir = to_dir.replace("~",home)
                 os.chdir(to_dir)
+                if redirect_stderr:
+                    with open(redirect_stderr, "w") as f:
+                        pass
             except FileNotFoundError:
                 err_msg = f"cd: {to_dir}: No such file or directory"
                 if redirect_stderr:
