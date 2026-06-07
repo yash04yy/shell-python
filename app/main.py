@@ -31,8 +31,12 @@ def main():
             cur_dir = os.getcwd()
             print(cur_dir)
         elif command.startswith("cd "):
-            to_dir = command[3:]
-            os.chdir(to_dir)
+            try:
+                to_dir = command[3:]
+                os.chdir(to_dir)
+            except FileNotFoundError:
+                print(f"cd: {to_dir}: No such file or directory")
+                
         else:
             # Coverts $ python3 --version
             #to ['python3', '--version']
