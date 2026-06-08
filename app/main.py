@@ -2,11 +2,113 @@ import sys
 import os
 import subprocess
 import shlex
+import readline
+
+# Global list of builtins required by the autocomplete stages
+BUILTINS = ["echo", "exit", "type", "pwd", "cd"]
+
+def get_all_matches(text):
+    """
+    Finds all builtins and PATH executables starting with `text`.
+    """
+    matches = set()
+    # 1. Check builtins
+    for b in BUILTINS:
+        if b.startswith(text):
+            matches.add(b)
+    
+   # 2. Check executables in PATH using your directory loop style
+    path_env = os.getenv("PATH")
+    if path_env:
+        # Split directories by colon just like your code does
+        path_dirs = path_env.split(':')
+        
+        for path_dir in path_dirs:
+            # Skip directories that don't exist to prevent crashes
+            if not os.path.isdir(path_dir):
+                continue
+                
+            try:
+                # Open up the directory and look at every single file inside
+                for filename in os.listdir(path_dir):
+                    # Check if the file starts with what the user typed (e.g., "custom")
+                    if filename.startswith(text):
+                        # Construct the full path using your style
+                        file_path = path_dir + '/' + filename
+                        
+                        # Verify it's a real file and executable (just like your code!)
+                        if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                            matches.add(filename)
+            except OSError:
+                # If a directory is locked or unreadable, ignore it and keep scanning
+                continue
+                
+    return sorted(list(matches))
+
+def longest_common_prefix(strs):
+    """Returns the longest common prefix among a list of strings."""
+    prefix = strs[0]
+    for s in strs[1:]:
+        while not s.startswith(prefix):
+            prefix = prefix[:-1]
+            if not prefix:
+                return ""
+    return prefix
+
+def completer(text, state):
+    """
+    Custom completion engine that implements Longest Common Prefix (LCP),
+    trailing spaces for unique matches, and custom behavior matching Bash.
+    """
+    # Readline requests candidates sequentially using 'state' (0, 1, 2...)
+    if state == 0:
+        # Fetch all matching commands globally
+        completer.matches = get_all_matches(text)
+
+        if not completer.matches:
+            # Stage: Handling Invalid Completions (Ring Bell)
+            sys.stdout.write('\x07')
+            return None
+
+        if len(completer.matches) > 1:
+            # Stage: Completing to Longest Common Prefix (LCP)
+            lcp = longest_common_prefix(completer.matches)
+
+            # If the common prefix extends beyond what the user typed, complete up to it!
+            if lcp and lcp != text:
+                return lcp
+            
+            # Stage: Handling Multiple Matches (First tab press rings bell)
+            sys.stdout.write("\x07")
+            return None
+    
+    # Return candidates matching index states
+    if state < len(completer.matches):
+        match = completer.matches[state]
+        # Append a trailing space only if it's a definitive single match
+        if len(completer.matches) == 1:
+            return match + " "
+        return match
+    else:
+        return None
+
+# Initialize completer matches cache attribute
+completer.matches = []
+
+# --- Configure Readline Engine Hooks ---
+readline.set_completer(completer)
+# Bind Tab to initiate the custom completion lookup
+readline.parse_and_bind("tab: complete")
+# CRITICAL: Prevent readline from breaking prefixes at dashes or underscores
+readline.set_completer_delims(" \t\n\"\\'`@$><=;|&|")
 
 def main():
     while(True):
-        sys.stdout.write("$ ")
-        command = input()
+        # Readline automatically outputs the prompt and handles inline editing/TABS!
+        try:
+            command = input("$ ")
+        except (EOFError, KeyboardInterrupt):
+            break
 
         try:
             # echo 'shell hello'
