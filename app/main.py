@@ -79,10 +79,21 @@ def completer(text, state):
             if lcp and lcp != text:
                 return lcp
             
-            # Stage: Handling Multiple Matches (First tab press rings bell)
-            sys.stdout.write("\x07")
-            sys.stdout.flush()
-            return None
+            # FIXED: Double-tab memory hook.
+            # If the user hits tab again on the same exact text, skip the exit trap
+            # and let the loop stream out the matches!
+            if completer.old_text == text:
+                # Let readline fall through to list candidates
+                pass
+            else:
+                completer.old_text = text
+                sys.stdout.write("\x07")
+                sys.stdout.flush()
+                return None
+                
+    # Update text memory cache tracking
+    if state == 0:
+        completer.old_text = text
     
     # Return candidates matching index states
     if state < len(completer.matches):
