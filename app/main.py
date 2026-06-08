@@ -7,17 +7,13 @@ import readline
 # Global list of builtins required by the autocomplete stages
 BUILTINS = ["echo", "exit", "type", "pwd", "cd"]
 
-def get_all_matches(text):
-    """
-    Finds all builtins and PATH executables starting with `text`.
-    """
+def get_command_matches(text):
+    """Finds all builtins and PATH executables starting with `text`."""
     matches = set()
-    # 1. Check builtins
     for b in BUILTINS:
         if b.startswith(text):
             matches.add(b)
     
-    # 2. Check executables in PATH using directory loop style
     path_env = os.getenv("PATH")
     if path_env:
         path_dirs = path_env.split(':')
@@ -32,8 +28,38 @@ def get_all_matches(text):
                             matches.add(filename)
             except OSError:
                 continue
-                
     return sorted(list(matches))
+
+def get_filename_matches(text):
+    """
+    Finds matching files/directories in the specified path based on the prefix.
+    Returns raw entry names relative to the directory searched.
+    """
+    # 1. Determine the target directory and the lookup prefix
+    if '/' in text:
+        # Split at the last slash
+        dir_path, prefix = text.rsplit('/', 1)
+        # Handle root directory edge case or append trailing slash for path evaluation
+        search_dir = dir_path if dir_path else '/'
+    else:
+        search_dir = '.'
+        prefix = text
+
+    if not os.path.isdir(search_dir):
+        return []
+
+    matches = []
+    try:
+        for entry in os.listdir(search_dir):
+            if entry.startswith(prefix):
+                # Ignore hidden files unless explicitly requested by prefix
+                if entry.startswith('.') and not prefix.startswith('.'):
+                    continue
+                matches.append(entry)
+    except OSError:
+        return []
+
+    return sorted(matches)
 
 def longest_common_prefix(strs):
     """Returns the longest common prefix among a list of strings."""
@@ -49,45 +75,106 @@ def longest_common_prefix(strs):
 
 def completer(text, state):
     """
-    Custom completion engine that implements Longest Common Prefix (LCP),
-    trailing spaces for unique matches, and custom behavior matching Bash.
+    Unified completion engine handling commands, relative/absolute file paths,
+    LCP expansions, visual directory trailing slashes, and multi-tab lists.
     """
     if state == 0:
-        # Fetch all matching commands globally
-        completer.matches = get_all_matches(text)
+        # Read the entire raw line typed by the user so far
+        line_buffer = readline.get_line_buffer()
+        
+        # Determine if we are completing the first command or a subsequent argument.
+        # We strip trailing spaces to check if the user is starting a new argument.
+        stripped_leading = line_buffer.lstrip()
+        
+        # If there are spaces in the buffer before our current token, it's an argument!
+        is_argument = ' ' in stripped_leading
+        
+        if not is_argument:
+            # --- Command Mode ---
+            completer.raw_matches = get_command_matches(text)
+            completer.mode = "command"
+        else:
+            # --- Filename Argument Mode ---
+            completer.mode = "filename"
+            # Get matches relative to the directory path being typed
+            completer.raw_matches = get_filename_matches(text)
 
-        if not completer.matches:
-            # Stage: Handling Invalid Completions (Ring Bell)
+        if not completer.raw_matches:
+            # Stage: Missing Entry Completions (Ring Bell)
             sys.stdout.write('\x07')
             sys.stdout.flush()
             return None
 
-        if len(completer.matches) > 1:
-            # Stage: Completing to Longest Common Prefix (LCP)
-            lcp = longest_common_prefix(completer.matches)
-
-            # If the common prefix extends beyond what the user typed, complete up to it!
-            if lcp and lcp != text:
-                return lcp
+        # Process matching results
+        if len(completer.raw_matches) > 1:
+            # Calculate LCP based on raw entries discovered
+            lcp_raw = longest_common_prefix(completer.raw_matches)
             
-            # FIXED: Do not manually ring bells or exit early with None here.
-            # Returning the list items sequentially allows readline to handle the 
-            # 1st tab (bell) and 2nd tab (print choices layout) automatically.
+            # Reconstruct the full LCP token path to match against the typed input
+            if completer.mode == "filename" and '/' in text:
+                dir_part, _ = text.rsplit('/', 1)
+                lcp_full = dir_part + '/' + lcp_raw
+            else:
+                lcp_full = lcp_raw
+
+            # If the calculated LCP can expand what the user typed, complete up to it!
+            if lcp_full and lcp_full != text:
+                # Store a single-element list containing the LCP expansion
+                completer.display_matches = [lcp_full]
+                return lcp_full
+            
+            # If we can't expand text any further, ring the bell on the first tab press
             sys.stdout.write("\x07")
             sys.stdout.flush()
 
-    # Return candidates matching index states
-    if state < len(completer.matches):
-        match = completer.matches[state]
-        # Append a trailing space only if it's a definitive single match
-        if len(completer.matches) == 1:
-            return match + " "
-        return match
-    else:
-        return None
+            # Pre-format the absolute presentation paths for readline to display to the user
+            completer.display_matches = []
+            for match in completer.raw_matches:
+                # Reconstruct full path to check file stats accurately
+                if completer.mode == "filename" and '/' in text:
+                    dir_part, _ = text.rsplit('/', 1)
+                    full_path = os.path.join(dir_part, match)
+                    display_name = dir_part + '/' + match
+                else:
+                    full_path = match
+                    display_name = match
 
-# Initialize completer matches cache attribute
-completer.matches = []
+                # Stage: Handling Multiple Matches formatting constraint
+                if completer.mode == "filename" and os.path.isdir(full_path):
+                    completer.display_matches.append(display_name + "/")
+                else:
+                    completer.display_matches.append(display_name)
+        else:
+            # Exactly 1 match found! Append trailing spaces or directory slashes
+            single_match = completer.raw_matches[0]
+            
+            if completer.mode == "command":
+                completer.display_matches = [single_match + " "]
+            else:
+                # Reconstruct path to check if it's a file or folder
+                if '/' in text:
+                    dir_part, _ = text.rsplit('/', 1)
+                    full_path = os.path.join(dir_part, single_match)
+                    completed_path = dir_part + '/' + single_match
+                else:
+                    full_path = single_match
+                    completed_path = single_match
+
+                # Stage: Directory Name Completion formatting constraint
+                if os.path.isdir(full_path):
+                    completer.display_matches = [completed_path + "/"]
+                else:
+                    completer.display_matches = [completed_path + " "]
+
+    # Feed candidate values sequentially back to the Readline streaming loops
+    if state < len(completer.display_matches):
+        return completer.display_matches[state]
+    return None
+
+# Initialize memory cache attributes
+completer.raw_matches = []
+completer.display_matches = []
+completer.mode = "command"
 
 # --- Configure Readline Engine Hooks ---
 readline.set_completer(completer)
@@ -95,6 +182,9 @@ if "libedit" in readline.__doc__:
     readline.parse_and_bind("bind ^I rl_complete")
 else:
     readline.parse_and_bind("tab: complete")
+    
+# CRITICAL: Strip out forward slashes from the delimiter list!
+# If '/' remains a delimiter, typing 'path/to/f' will slice text down to just 'f'
 readline.set_completer_delims(" \t\n\"\\'`@$><=;|&|")
 def main():
     while(True):
