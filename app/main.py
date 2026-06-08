@@ -283,7 +283,7 @@ def main():
             if len(args) < 2:
                 continue
             target = args[1]
-            builtins = {"echo","exit","type","pwd"," complete"}
+            builtins = {"echo","exit","type","pwd","complete"}
             if target in builtins:
                 output_msg = f"{target} is a shell builtin"
             else:
