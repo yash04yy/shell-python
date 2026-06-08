@@ -17,36 +17,28 @@ def get_all_matches(text):
         if b.startswith(text):
             matches.add(b)
     
-   # 2. Check executables in PATH using your directory loop style
+    # 2. Check executables in PATH using directory loop style
     path_env = os.getenv("PATH")
     if path_env:
-        # Split directories by colon just like your code does
         path_dirs = path_env.split(':')
-        
         for path_dir in path_dirs:
-            # Skip directories that don't exist to prevent crashes
             if not os.path.isdir(path_dir):
                 continue
-                
             try:
-                # Open up the directory and look at every single file inside
                 for filename in os.listdir(path_dir):
-                    # Check if the file starts with what the user typed (e.g., "custom")
                     if filename.startswith(text):
-                        # Construct the full path using your style
                         file_path = path_dir + '/' + filename
-                        
-                        # Verify it's a real file and executable (just like your code!)
                         if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                             matches.add(filename)
             except OSError:
-                # If a directory is locked or unreadable, ignore it and keep scanning
                 continue
                 
     return sorted(list(matches))
 
 def longest_common_prefix(strs):
     """Returns the longest common prefix among a list of strings."""
+    if not strs:
+        return ""
     prefix = strs[0]
     for s in strs[1:]:
         while not s.startswith(prefix):
@@ -60,7 +52,6 @@ def completer(text, state):
     Custom completion engine that implements Longest Common Prefix (LCP),
     trailing spaces for unique matches, and custom behavior matching Bash.
     """
-    # Readline requests candidates sequentially using 'state' (0, 1, 2...)
     if state == 0:
         # Fetch all matching commands globally
         completer.matches = get_all_matches(text)
@@ -79,22 +70,12 @@ def completer(text, state):
             if lcp and lcp != text:
                 return lcp
             
-            # FIXED: Double-tab memory hook.
-            # If the user hits tab again on the same exact text, skip the exit trap
-            # and let the loop stream out the matches!
-            if completer.old_text == text:
-                # Let readline fall through to list candidates
-                pass
-            else:
-                completer.old_text = text
-                sys.stdout.write("\x07")
-                sys.stdout.flush()
-                return None
-                
-    # Update text memory cache tracking
-    if state == 0:
-        completer.old_text = text
-    
+            # FIXED: Do not manually ring bells or exit early with None here.
+            # Returning the list items sequentially allows readline to handle the 
+            # 1st tab (bell) and 2nd tab (print choices layout) automatically.
+            sys.stdout.write("\x07")
+            sys.stdout.flush()
+
     # Return candidates matching index states
     if state < len(completer.matches):
         match = completer.matches[state]
@@ -110,16 +91,11 @@ completer.matches = []
 
 # --- Configure Readline Engine Hooks ---
 readline.set_completer(completer)
-# Check if the underlying system is macOS Editline or standard GNU Readline
 if "libedit" in readline.__doc__:
-    # macOS specific binding syntax
     readline.parse_and_bind("bind ^I rl_complete")
 else:
-    # Standard Linux / GNU Readline syntax
     readline.parse_and_bind("tab: complete")
-# CRITICAL: Prevent readline from breaking prefixes at dashes or underscores
 readline.set_completer_delims(" \t\n\"\\'`@$><=;|&|")
-
 def main():
     while(True):
         # Readline automatically outputs the prompt and handles inline editing/TABS!
