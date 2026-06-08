@@ -68,6 +68,7 @@ def completer(text, state):
         if not completer.matches:
             # Stage: Handling Invalid Completions (Ring Bell)
             sys.stdout.write('\x07')
+            sys.stdout.flush()
             return None
 
         if len(completer.matches) > 1:
@@ -80,6 +81,7 @@ def completer(text, state):
             
             # Stage: Handling Multiple Matches (First tab press rings bell)
             sys.stdout.write("\x07")
+            sys.stdout.flush()
             return None
     
     # Return candidates matching index states
@@ -97,8 +99,13 @@ completer.matches = []
 
 # --- Configure Readline Engine Hooks ---
 readline.set_completer(completer)
-# Bind Tab to initiate the custom completion lookup
-readline.parse_and_bind("tab: complete")
+# Check if the underlying system is macOS Editline or standard GNU Readline
+if "libedit" in readline.__doc__:
+    # macOS specific binding syntax
+    readline.parse_and_bind("bind ^I rl_complete")
+else:
+    # Standard Linux / GNU Readline syntax
+    readline.parse_and_bind("tab: complete")
 # CRITICAL: Prevent readline from breaking prefixes at dashes or underscores
 readline.set_completer_delims(" \t\n\"\\'`@$><=;|&|")
 
